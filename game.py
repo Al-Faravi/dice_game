@@ -23,11 +23,14 @@ def parse_dice_args(args):
             sys.exit(1)
     return dice
 
-def generate_fair_random_number(range_end):
+def generate_fair_random_number(user_choice, computer_choice, range_end):
+    # Combine both user and computer choices to generate a fair random number
+    # This could be a hash of both values for fairness
     key = secrets.token_bytes(32)
+    combined_choices = f"{user_choice}{computer_choice}".encode('utf-8')
+    hmac_result = hmac.new(key, combined_choices, hashlib.sha3_256).hexdigest()
     x = secrets.randbelow(range_end)
-    hmac_result = hmac.new(key, bytes([x]), hashlib.sha3_256).hexdigest()
-    print(f"HMAC (SHA3-256) for {x}: {hmac_result}")
+    print(f"HMAC (SHA3-256) for choices {user_choice} and {computer_choice}: {hmac_result}")
     return x, key, hmac_result
 
 class Game:
@@ -36,7 +39,10 @@ class Game:
     
     def start_game(self):
         print("Let's determine who makes the first move.")
-        first_move = self.determine_first_move()
+        user_choice = self.determine_first_move()
+        
+        if user_choice is None:  # Check if user didn't input valid guess
+            return
         
         user_dice = self.user_select_dice()
         computer_dice = self.computer_select_dice()
@@ -58,12 +64,23 @@ class Game:
             print("It's a tie!")
 
     def determine_first_move(self):
-        x, key, hmac_result = generate_fair_random_number(2)
         user_choice = input("Try to guess my selection (0 or 1): ")
         if user_choice not in ['0', '1']:
             print("Invalid input. Please choose 0 or 1.")
-            return
-        print(f"My selection is {x} (HMAC={hmac_result})")
+            return None
+        
+        computer_choice = random.choice([0, 1])
+        print(f"Computer selected {computer_choice} (Your guess: {user_choice})")
+
+        # Generate fair random number considering both choices
+        x, key, hmac_result = generate_fair_random_number(user_choice, computer_choice, 2)
+        print(f"Generated random value: {x} (HMAC: {hmac_result})")
+
+        # Determine who goes first based on the fair random number
+        if x == 0:
+            print("User goes first.")
+        else:
+            print("Computer goes first.")
         return x
 
     def user_select_dice(self):
@@ -84,14 +101,22 @@ class ProbabilityTable:
         self.dice_combinations = dice_combinations
     
     def display_table(self):
-        headers = ['User Dice v'] + [str(dice.faces) for dice in self.dice_combinations]
+        # Add some introductory text to explain the table
+        print("\nThe table below shows the probabilities of the user winning against each dice combination.")
+        print("Each cell represents the probability of the user winning against the respective dice combination.")
+        
+        headers = ['User Dice v'] + [', '.join(map(str, dice.faces)) for dice in self.dice_combinations]
         rows = []
         
         for dice1 in self.dice_combinations:
-            row = [str(dice1.faces)]
+            row = [', '.join(map(str, dice1.faces))]
             for dice2 in self.dice_combinations:
-                prob = self.calculate_probability(dice1, dice2)
-                row.append(f"{prob:.4f}")
+                # Skip calculating against self
+                if dice1 == dice2:
+                    row.append('-')
+                else:
+                    prob = self.calculate_probability(dice1, dice2)
+                    row.append(f"{prob:.4f}")
             rows.append(row)
         
         print(tabulate(rows, headers=headers, tablefmt='grid'))
