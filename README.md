@@ -20,4 +20,4 @@ python game.py 2,2,4,4,9,9 1,1,6,6,8,8 3,3,5,5,7,7
 Example Usage:
 Run the game and follow prompts:
 python game.py 2,2,4,4,9,9 1,1,6,6,8,8 3,3,5,5,7,7
-Choose your dice and try to beat the computer!
+Choose your dice and try to beat the computer!"# dice_game" 
