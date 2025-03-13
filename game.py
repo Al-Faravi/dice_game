@@ -23,15 +23,27 @@ def parse_dice_args(args):
             sys.exit(1)
     return dice
 
-def generate_fair_random_number(user_choice, computer_choice, range_end):
-    # Combine both user and computer choices to generate a fair random number
-    # This could be a hash of both values for fairness
+def generate_fair_random_number():
+    # Step 1: Computer generates a random number x from range (0 to 5 inclusive)
+    x = random.randint(0, 5)
+    
+    # Step 2: Computer generates a secret key
     key = secrets.token_bytes(32)
-    combined_choices = f"{user_choice}{computer_choice}".encode('utf-8')
-    hmac_result = hmac.new(key, combined_choices, hashlib.sha3_256).hexdigest()
-    x = secrets.randbelow(range_end)
-    print(f"HMAC (SHA3-256) for choices {user_choice} and {computer_choice}: {hmac_result}")
+
+    # Step 3: Calculate and display HMAC(key, x)
+    hmac_result = hmac.new(key, str(x).encode('utf-8'), hashlib.sha3_256).hexdigest()
+    print(f"Computer generated random number: {x}")
+    print(f"Computer generated secret key: {key.hex()}")
+    print(f"HMAC (SHA3-256) for random number {x}: {hmac_result}")
+    
     return x, key, hmac_result
+
+def collaborative_random_number_generation(x, y):
+    # Step 5: Calculate the final result (x + y) % 6
+    result = (x + y) % 6
+    print(f"User selected: {y}")
+    print(f"Collaborative result (x + y) % 6: {result}")
+    return result
 
 class Game:
     def __init__(self, dice):
@@ -39,11 +51,22 @@ class Game:
     
     def start_game(self):
         print("Let's determine who makes the first move.")
-        user_choice = self.determine_first_move()
+        x, key, hmac_result = generate_fair_random_number()
         
-        if user_choice is None:  # Check if user didn't input valid guess
+        # Step 4: User selects a number (y ∈ {0,1,2,3,4,5})
+        user_choice = input("Select a number (0 to 5): ")
+        try:
+            user_choice = int(user_choice)
+            if user_choice not in range(6):
+                print("Invalid choice. Please choose a number between 0 and 5.")
+                return
+        except ValueError:
+            print("Invalid input. Please choose a valid integer between 0 and 5.")
             return
-        
+
+        # Step 6: Compute the final result and display it
+        result = collaborative_random_number_generation(x, user_choice)
+
         user_dice = self.user_select_dice()
         computer_dice = self.computer_select_dice()
 
@@ -62,26 +85,6 @@ class Game:
             print("Computer wins!")
         else:
             print("It's a tie!")
-
-    def determine_first_move(self):
-        user_choice = input("Try to guess my selection (0 or 1): ")
-        if user_choice not in ['0', '1']:
-            print("Invalid input. Please choose 0 or 1.")
-            return None
-        
-        computer_choice = random.choice([0, 1])
-        print(f"Computer selected {computer_choice} (Your guess: {user_choice})")
-
-        # Generate fair random number considering both choices
-        x, key, hmac_result = generate_fair_random_number(user_choice, computer_choice, 2)
-        print(f"Generated random value: {x} (HMAC: {hmac_result})")
-
-        # Determine who goes first based on the fair random number
-        if x == 0:
-            print("User goes first.")
-        else:
-            print("Computer goes first.")
-        return x
 
     def user_select_dice(self):
         print("Select your dice:")
